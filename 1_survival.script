@@ -1,0 +1,43 @@
+#Specify whereallelic dosage format genotypes are stored
+probdir=/home/caroline/Desktop/pgbd/qc/imputation/dasuqc1_bip_pgbd_mix_am-qc.hg19.ch.fl/dosecnt
+
+
+
+#Specify working directory (error logs will go here)
+workingdir=/home/caroline/Desktop/pgbd/qc/imputation
+
+
+cd $workingdir
+
+ls $probdir | grep .gz$  | awk -v dir=$probdir '{print dir"/"$1}' > files_to_analyze.txt
+
+#Number of commands to run is a function of the number of files
+ncommands=$(wc -l files_to_analyze.txt | awk '{print $1}' )
+
+#Make a job code, where 'nodesize' processes will run on each node simultaneously
+ nodesize=8
+ nodeuse=$(($nodesize - 1))
+
+#Total number of jobs = Number of commands / number of commands used per job, rounded up 
+totjobs=$(( ($ncommands + $nodeuse - 1 ) / $nodeuse ))
+
+#family file
+fam_file=/home/caroline/Desktop/pgbd/qc/imputation/dasuqc1_bip_pgbd_mix_am-qc.hg19.ch.fl/qc1/dos_bip_pgbd_mix_am-qc.hg19.ch.fl.chr5_114_117.out.dosage.fam
+
+
+pheno_file=/home/caroline/Desktop/pgbd/qc/imputation/pgbd_va.pheno
+covar_file=/home/caroline/Desktop/pgbd/qc/imputation/pgbdva_bip_pgbd_mix_am-qc-eur_pca.menv.mds_cov 
+event_name=nonresponder_event 
+time_name=nonresponder_time
+cov_list=C1,C2,C3,C4,C5
+
+#Specify where regression output will be stored 
+outdir=/home/caroline/Desktop/pgbd/qc/imputation/survival_gwas/pgbdva_eur_"$event_name"
+
+
+if [ ! -d "$outdir" ]; then
+  mkdir $outdir
+fi
+
+
+qsub -t1-$totjobs -V -d $workingdir  -e errandout/ -o errandout/ ordered_logt_dosage.pbs -F "-d files_to_analyze.txt -f $fam_file -p $pheno_file -c $covar_file -e $event_name -t $time_name -l $cov_list -o $outdir -n $nodeuse"
