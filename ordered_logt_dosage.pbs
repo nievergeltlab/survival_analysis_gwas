@@ -1,0 +1,36 @@
+#!/bin/bash
+
+while getopts d:f:p:c:e:t:l:o:n: option
+do
+  case "${option}"
+    in
+      d) dosage_file=${OPTARG};;
+      f) fam_file=${OPTARG};;
+      p) pheno_file=${OPTARG};;
+      c) covar_file=${OPTARG};;
+      e) event_name=${OPTARG};;
+      t) time_name=${OPTARG};;
+      l) cov_list=${OPTARG};;   
+      o) outdir=${OPTARG};;       
+      n) nodeuse=${OPTARG};;    
+    esac
+done
+
+#module load R 
+
+ #Write the start and stop points of the file
+ jstart=$((($PBS_ARRAYID-1)*$nodeuse +1))
+ jstop=$(($PBS_ARRAYID*$nodeuse))
+
+ for j in $(seq -w $jstart 1 $jstop)
+ do
+  genotype_file=$(awk -v lineno=$j '{if(NR==lineno) print}' $dosage_file)
+  pheno_name=$(echo $pheno_file | awk 'BEGIN{FS="/"}{print NR}' | awk 'BEGIN{FS="."}{print $1}' )
+  if [ -e "$outdir"/"$pheno_name"_"$PBS_ARRAYID"_"$j" ]
+  then
+   echo "File "$outdir"/"$pheno_name"_"$PBS_ARRAYID"_"$j"" already complete. Skipping!
+  else
+   Rscript ordered_logit_dosage.r $genotype_file $fam_file $pheno_file $covar_file $event_name $time_name $cov_list "$outdir"/"$pheno_name"_"$PBS_ARRAYID"_"$j" &
+  fi 
+ done
+wait
