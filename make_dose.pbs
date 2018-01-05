@@ -1,0 +1,30 @@
+#PBS -lnodes=1
+#PBS -lwalltime=0:05:00
+
+#!/bin/bash
+
+while getopts n:o:p:d:s:v: option
+do
+  case "${option}"
+    in
+      o) outputfile=${OPTARG};;
+      n) nodeuse=${OPTARG};;
+      p) probdir=${OPTARG};;
+      d) outdir=${OPTARG};;
+      s) nsub=${OPTARG};;
+    esac
+done
+
+ #This version of the script 
+ 
+ #Write the start and stop points of the file
+ jstart=$((($PBS_ARRAYID-1)*$nodeuse +1))
+ jstop=$(($PBS_ARRAYID*$nodeuse))
+
+ for j in $(seq -w $jstart 1 $jstop)
+ do
+  file_use=$(awk -v lineno=$j '{if(NR==lineno) print}' $outputfile)
+  gzip -d -c "$probdir"/"$file_use" | awk -v s=$nsub 'NR>1{ printf $1 " " $2 " " $3; for(i=1; i<=s; i++) printf " " $(i*2+2)*2+$(i*2+3); printf "\n" }' | sed 's/ /\t/g' | gzip > "$outdir"/"$file_use".doscnt.gz &
+  cp 
+ done
+wait
